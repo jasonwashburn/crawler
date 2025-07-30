@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -19,12 +18,19 @@ func getURLsFromHTML(htmlBody, rawBaseURL string) ([]string, error) {
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
 					link := attr.Val
-					if !strings.HasPrefix(link, "http") {
-						// TODO: Handle relative URLs with ..
-						// TODO: Handle relative URLs starting with root
-						link = fmt.Sprintf("%s/%s", rawBaseURL, strings.TrimLeft(link, "/"))
+					if strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://") {
+						links = append(links, link)
+					} else if strings.HasPrefix(link, "/") {
+						baseURLParts := strings.Split(rawBaseURL, "/")
+						baseURL := strings.Join(baseURLParts[:3], "/")
+						links = append(links, baseURL+link)
+					} else if strings.HasPrefix(link, "../") {
+						baseURLParts := strings.Split(rawBaseURL, "/")
+						baseURL := strings.Join(baseURLParts[:3], "/")
+						link = strings.TrimPrefix(link, "../")
+						link = baseURL + "/" + link
+						links = append(links, link)
 					}
-					links = append(links, link)
 				}
 			}
 		}
