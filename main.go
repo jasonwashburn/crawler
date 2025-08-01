@@ -20,4 +20,9 @@ func main() {
 
 	baseURL := args[1]
 	fmt.Println("starting crawl of: ", baseURL)
+	body, err := getHTML(baseURL)
+	if err != nil {
+		fmt.Println("error fetching HTML:", err)
+	}
+	fmt.Println(body)
 }

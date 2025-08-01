@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -41,4 +43,23 @@ func getURLsFromHTML(htmlBody, rawBaseURL string) ([]string, error) {
 
 	visitNode(doc)
 	return links, nil
+}
+
+func getHTML(rawURL string) (string, error) {
+	resp, err := http.Get(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("failed to fetch URL %s: %s", rawURL, resp.Status)
+	}
+	if !strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+		return "", fmt.Errorf("URL %s is not an HTML document", rawURL)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
