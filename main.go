@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"sync"
 )
@@ -59,9 +60,7 @@ func main() {
 	cfg.crawlPage(baseURL.String())
 
 	cfg.wg.Wait()
-	for page, count := range pages {
-		fmt.Printf("Page: %s, Count: %d\n", page, count)
-	}
+	printReport(cfg.pages, baseURL.String())
 }
 
 func (cfg *config) crawlPage(rawCurrentURL string) {
@@ -129,4 +128,35 @@ func (cfg *config) addPageVisit(normalizedURL string) (isFirst bool) {
 	fmt.Println("adding page visit for:", normalizedURL, "isFirst:", isFirst)
 	cfg.pages[normalizedURL]++
 	return
+}
+
+func printReport(pages map[string]int, baseURL string) {
+	fmt.Println("=============================")
+	fmt.Println("REPORT for", baseURL)
+	fmt.Println("=============================")
+
+	type URLCount struct {
+		url   string
+		count int
+	}
+
+	var URLs []URLCount
+
+	for url, count := range pages {
+		URLs = append(URLs, URLCount{url: url, count: count})
+	}
+
+	sort.Slice(URLs, func(i, j int) bool {
+		if URLs[i].count < URLs[j].count {
+			return false
+		} else if URLs[i].count > URLs[j].count {
+			return true
+		} else {
+			return URLs[i].url < URLs[j].url
+		}
+	})
+
+	for _, urlCount := range URLs {
+		fmt.Printf("Found %d internal links to %s\n", urlCount.count, urlCount.url)
+	}
 }
