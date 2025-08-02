@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"sync"
 )
 
@@ -13,17 +14,18 @@ type config struct {
 	mu                 *sync.Mutex
 	concurrencyControl chan struct{}
 	wg                 *sync.WaitGroup
+	maxPages           int
 }
 
 func main() {
 	args := os.Args
 
-	if len(args) < 2 {
-		fmt.Println("no website provided")
+	if len(args) < 4 {
+		fmt.Println("Usage: ./crawler URL maxConcurrency maxPages")
 		os.Exit(1)
 	}
 
-	if len(args) > 2 {
+	if len(args) > 4 {
 		fmt.Println("too many arguments provided")
 		os.Exit(1)
 	}
@@ -37,7 +39,14 @@ func main() {
 	fmt.Println("starting crawl of: ", baseURL.String())
 
 	pages := make(map[string]int)
-	maxConcurrency := 5
+	maxConcurrency, err := strconv.Atoi(args[2])
+	if err != nil {
+		fmt.Println("error parsing maxConcurrency:", err)
+	}
+	maxPages, err := strconv.Atoi(args[3])
+	if err != nil {
+		fmt.Println("error parsing maxPages:", err)
+	}
 
 	cfg := config{
 		pages:              pages,
@@ -45,6 +54,7 @@ func main() {
 		mu:                 &sync.Mutex{},
 		concurrencyControl: make(chan struct{}, maxConcurrency),
 		wg:                 &sync.WaitGroup{},
+		maxPages:           maxPages,
 	}
 	cfg.crawlPage(baseURL.String())
 
@@ -55,6 +65,14 @@ func main() {
 }
 
 func (cfg *config) crawlPage(rawCurrentURL string) {
+	cfg.mu.Lock()
+	if len(cfg.pages) >= cfg.maxPages {
+		cfg.mu.Unlock()
+		fmt.Println("maximum number of pages reached:", cfg.maxPages)
+		return
+	}
+	cfg.mu.Unlock()
+
 	currentURL, err := url.Parse(rawCurrentURL)
 	if err != nil {
 		fmt.Println("error parsing current URL:", err)
